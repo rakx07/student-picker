@@ -16,3 +16,6 @@ Route::post('/reset', [PickerController::class, 'reset'])->name('picker.reset');
 Route::get('/export/csv', [PickerController::class, 'exportCsv'])->name('picker.export.csv');
 Route::get('/export/xlsx', [PickerController::class, 'exportXlsx'])->name('picker.export.xlsx');
 Route::get('/export/pdf', [PickerController::class, 'exportPdf'])->name('picker.export.pdf');
+
+Route::get('/export/remaining/csv', [PickerController::class, 'exportRemainingCsv'])->name('picker.export.remaining.csv');
+Route::get('/export/remaining/xlsx', [PickerController::class, 'exportRemainingXlsx'])->name('picker.export.remaining.xlsx');

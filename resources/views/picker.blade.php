@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Student Random Picker</title>
 
-    <!-- Tailwind CDN (simple 1-page setup) -->
+    <!-- Tailwind CDN (ok for small app; can be compiled later) -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
@@ -31,13 +31,16 @@
     <div class="flex items-start justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold">Student Random Picker</h1>
-            <p class="text-slate-600">Paste list → spin animation → pick winner → winner removed → export selected</p>
+            <p class="text-slate-600">Paste list → spin animation → pick winner → winner removed → export selected/remaining</p>
         </div>
 
-        <div class="flex gap-2">
-            <a class="px-3 py-2 rounded bg-slate-900 text-white text-sm" href="{{ route('picker.export.csv') }}">Export CSV</a>
-            <a class="px-3 py-2 rounded bg-slate-900 text-white text-sm" href="{{ route('picker.export.xlsx') }}">Export Excel</a>
-            <a class="px-3 py-2 rounded bg-slate-900 text-white text-sm" href="{{ route('picker.export.pdf') }}">Export PDF</a>
+        <div class="flex flex-wrap gap-2 justify-end">
+            <a class="px-3 py-2 rounded bg-slate-900 text-white text-sm" href="{{ route('picker.export.csv') }}">Export Selected CSV</a>
+            <a class="px-3 py-2 rounded bg-slate-900 text-white text-sm" href="{{ route('picker.export.xlsx') }}">Export Selected Excel</a>
+            <a class="px-3 py-2 rounded bg-slate-900 text-white text-sm" href="{{ route('picker.export.pdf') }}">Export Selected PDF</a>
+
+            <a class="px-3 py-2 rounded bg-indigo-700 text-white text-sm" href="{{ route('picker.export.remaining.xlsx') }}">Export Remaining Excel</a>
+            <a class="px-3 py-2 rounded bg-indigo-700 text-white text-sm" href="{{ route('picker.export.remaining.csv') }}">Export Remaining CSV</a>
 
             <form method="POST" action="{{ route('picker.reset') }}">
                 @csrf
@@ -61,7 +64,11 @@
                 @csrf
                 <textarea name="students" rows="12"
                           class="w-full rounded border p-3 focus:outline-none focus:ring"
-                          placeholder="Paste from Notepad / Excel / Sheets (one student per line).&#10;If pasted from Excel with columns, it uses the FIRST column as the name."></textarea>
+                          placeholder="Paste from Notepad / Excel / Sheets.
+One student per line.
+
+If pasted from Excel with multiple columns (e.g. Firstname, Lastname),
+it will combine them into a FULL NAME."></textarea>
 
                 @error('students')
                 <div class="text-red-600 text-sm">{{ $message }}</div>
@@ -73,7 +80,7 @@
             </form>
 
             <div class="text-sm text-slate-600">
-                Tip: For Excel, copy the column of names then paste here.
+                Tip: For Excel, copy rows/columns then paste here.
             </div>
         </div>
 
@@ -150,10 +157,8 @@
 
 <!-- CONGRATS MODAL -->
 <div id="winnerModal" class="hidden fixed inset-0 z-50">
-    <!-- overlay -->
     <div class="absolute inset-0 bg-black/40" id="modalOverlay"></div>
 
-    <!-- modal -->
     <div class="relative h-full w-full flex items-center justify-center p-4">
         <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 fade-in">
             <div class="flex items-start justify-between gap-3">
@@ -242,7 +247,6 @@ function renderSelected(arr) {
     `).join('');
 }
 
-// “Wheel” animation: cycle highlight quickly then stop
 async function animateRouletteStopAt(stopIndex, durationMs = 2200) {
     const items = [...rouletteList.querySelectorAll('[data-index]')];
     if (!items.length) return;
@@ -257,7 +261,6 @@ async function animateRouletteStopAt(stopIndex, durationMs = 2200) {
             const elapsed = now - start;
             const t = Math.min(1, elapsed / durationMs);
 
-            // ease-out: fast -> slow
             const speed = 18 + Math.floor(160 * (1 - t));
 
             if (Math.floor(elapsed) % speed === 0) {
@@ -287,7 +290,6 @@ btnDraw?.addEventListener('click', async () => {
     btnDraw.disabled = true;
     winnerInline.textContent = '...';
 
-    // Store current DOM items before backend updates
     const domItems = [...rouletteList.querySelectorAll('[data-index]')].map(el => el.textContent.trim());
 
     const res = await fetch("{{ route('picker.draw') }}", {
@@ -310,7 +312,6 @@ btnDraw?.addEventListener('click', async () => {
 
     const data = await res.json();
 
-    // Find where winner was in old DOM list
     let stopIndex = 0;
     const w = (data.winner || '').trim();
     const foundIndex = domItems.findIndex(x => x === w);
@@ -320,17 +321,12 @@ btnDraw?.addEventListener('click', async () => {
 
     winnerInline.textContent = data.winner;
 
-    // Update lists after animation
     renderRemaining(data.remaining);
     renderSelected(data.selected);
 
-    // Show congrats modal using newest selected entry (last)
     const last = data.selected[data.selected.length - 1];
-    if (last) {
-        openModal(last.name, last.drawn_at, last.draw_no);
-    }
+    if (last) openModal(last.name, last.drawn_at, last.draw_no);
 
-    // Re-enable draw if remaining exists
     btnDraw.disabled = (data.remaining.length === 0);
 });
 </script>

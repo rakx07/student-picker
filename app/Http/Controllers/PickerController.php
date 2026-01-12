@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\SelectedExport;
+use App\Exports\RemainingExport;
 
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -21,46 +21,45 @@ class PickerController extends Controller
     }
 
     public function import(Request $request)
-{
-    $request->validate([
-        'students' => ['required', 'string'],
-    ]);
+    {
+        $request->validate([
+            'students' => ['required', 'string'],
+        ]);
 
-    $raw = $request->input('students');
+        $raw = $request->input('students');
 
-    $lines = preg_split("/\r\n|\n|\r/", trim($raw));
-    $names = [];
+        $lines = preg_split("/\r\n|\n|\r/", trim($raw));
+        $names = [];
 
-    foreach ($lines as $line) {
-        $line = trim($line);
-        if ($line === '') continue;
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') continue;
 
-        // Split Excel columns (tab / comma / semicolon)
-        $cells = preg_split("/\t|,|;/", $line);
+            // Split Excel columns (tab / comma / semicolon)
+            $cells = preg_split("/\t|,|;/", $line);
 
-        // Combine ALL columns into a full name
-        $fullName = implode(' ', array_filter(array_map('trim', $cells)));
+            // Combine ALL columns into a full name
+            $fullName = implode(' ', array_filter(array_map('trim', $cells)));
 
-        // Normalize spaces
-        $fullName = preg_replace('/\s+/', ' ', $fullName);
+            // Normalize spaces
+            $fullName = preg_replace('/\s+/', ' ', $fullName);
 
-        if ($fullName !== '') {
-            $names[] = $fullName;
+            if ($fullName !== '') {
+                $names[] = $fullName;
+            }
         }
+
+        // Remove duplicates but keep order
+        $names = array_values(array_unique($names));
+
+        session([
+            'remaining' => $names,
+            'selected'  => [],
+        ]);
+
+        return redirect()->route('picker.index')
+            ->with('ok', 'Student list imported: ' . count($names));
     }
-
-    // Remove duplicates but keep order
-    $names = array_values(array_unique($names));
-
-    session([
-        'remaining' => $names,
-        'selected'  => [],
-    ]);
-
-    return redirect()->route('picker.index')
-        ->with('ok', 'Student list imported: ' . count($names));
-}
-
 
     public function draw(Request $request)
     {
@@ -107,6 +106,8 @@ class PickerController extends Controller
         return redirect()->route('picker.index')->with('ok', 'Reset complete.');
     }
 
+    // ====== EXPORT SELECTED ======
+
     public function exportCsv()
     {
         $selected = session('selected', []);
@@ -129,5 +130,19 @@ class PickerController extends Controller
         ])->setPaper('a4', 'portrait');
 
         return $pdf->download('selected_students.pdf');
+    }
+
+    // ====== EXPORT REMAINING ======
+
+    public function exportRemainingCsv()
+    {
+        $remaining = session('remaining', []);
+        return Excel::download(new RemainingExport($remaining), 'remaining_students.csv');
+    }
+
+    public function exportRemainingXlsx()
+    {
+        $remaining = session('remaining', []);
+        return Excel::download(new RemainingExport($remaining), 'remaining_students.xlsx');
     }
 }
