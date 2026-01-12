@@ -27,7 +27,9 @@ RUN composer install --no-dev --optimize-autoloader
 
 # Permissions (cache/session/logs)
 RUN mkdir -p storage/framework/{cache,sessions,views} bootstrap/cache \
- && chmod -R 775 storage bootstrap/cache
+ && chmod -R 775 storage bootstrap/cache \
+ && chown -R www-data:www-data storage bootstrap/cache
+
 
 # Render provides PORT env var
 CMD sh -c "php -S 0.0.0.0:${PORT:-10000} -t public"
