@@ -24,6 +24,8 @@ COPY . .
 
 # Install PHP deps
 RUN composer install --no-dev --optimize-autoloader
+RUN php artisan config:clear && php artisan route:clear && php artisan view:clear
+
 
 # Permissions (cache/session/logs)
 RUN mkdir -p storage/framework/{cache,sessions,views} bootstrap/cache \
