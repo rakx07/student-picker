@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y \
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
+RUN mkdir -p /app/database && touch /app/database/database.sqlite
 
 # Copy source
 COPY . .
